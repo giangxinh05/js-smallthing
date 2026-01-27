@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cali Tracker Full Version 🌸</title>
+    <style>
+        :root { --pink: #ffb7c5; --blue: #a2d2ff; --cream: #fffaf0; }
+        body { background: #fce4ec; font-family: 'Segoe UI', sans-serif; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; max-width: 500px; width: 100%; padding: 25px; border-radius: 25px; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        h2, h3 { color: #ff8fa3; text-align: center; }
+        .section { background: var(--cream); padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 2px dashed var(--pink); }
+        label { display: block; margin-top: 10px; font-weight: bold; color: #ff8fa3; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 10px; margin-top: 5px; border: 1.5px solid #ffe4e8; border-radius: 12px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #ff8fa3; color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .log-card { background: white; border-left: 5px solid var(--blue); padding: 15px; margin-bottom: 10px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .vol-increase { color: #28a745; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🌸 Nhật ký cali full option 🎀</h2>
+        
+        <div class="section">
+            <label>⚖️ Cân nặng (kg)</label>
+            <input type="number" id="weight" step="0.1" placeholder="Ví dụ: 45.5">
+            
+            <label>🍎 Dinh dưỡng hôm nay</label>
+            <textarea id="nutrition" rows="1" placeholder="Ví dụ: Ăn nhiều carb, đủ protein..."></textarea>
+            
+            <label>🎀 Loại buổi tập</label>
+            <select id="workoutType">
+                <option value="Push">Push (Đẩy)</option>
+                <option value="Pull">Pull (Kéo)</option>
+                <option value="Legs">Legs (Chân)</option>
+            </select>
+
+            <label>✨ Tên bài & số reps (cách nhau dấu phẩy)</label>
+            <input type="text" id="exName" placeholder="Pull-up">
+            <input type="text" id="exSets" placeholder="10, 8, 6">
+
+            <label>💖 Muscle pump & cảm nhận (1-5)</label>
+            <input type="range" id="exPump" min="1" max="5" value="3">
+            <input type="range" id="exConnection" min="1" max="5" value="3">
+
+            <label>💤 Chỉ số CNS Fatigue & DOMS (1-5)</label>
+            <input type="range" id="cnsFatigue" min="1" max="5" value="1">
+            <input type="range" id="doms" min="1" max="5" value="1">
+        </div>
+
+        <button onclick="saveWorkout()">LƯU VÀO DATABASE 🍓</button>
+        <hr>
+        <button onclick="loadHistory()" style="background: var(--blue);">XEM PROGRESSION 📈</button>
+        
+        <div id="history-container" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        // Thay link này bằng link Render của bạn sau này
+        const API_URL = "http://127.0.0.1:3000/api/workouts";
+
+        async function saveWorkout() {
+    const data = {
+        weight: Number(document.getElementById('weight').value),
+        nutrition: document.getElementById('nutrition').value,
+        type: document.getElementById('workoutType').value,
+        cnsFatigue: Number(document.getElementById('cnsFatigue').value),
+        doms: Number(document.getElementById('doms').value),
+        exercises: [{
+            name: document.getElementById('exName').value,
+            // Đoạn này phải viết đầy đủ như sau:
+            sets: document.getElementById('exSets').value.split(',').map(Number),
+            pump: Number(document.getElementById('exPump').value),
+            connection: Number(document.getElementById('exConnection').value)
+        }]
+    };
+
+    try {
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        if(response.ok) {
+            alert("Đã lưu rồi nhé Giang ✨");
+        } else {
+            alert("Lỗi server rồi nè ☁️");
+        }
+    } catch (error) {
+        alert("Không kết nối được server Giang ơi ❌");
+    }
+}
+        
+
+        async function loadHistory() {
+            const res = await fetch(API_URL);
+            const logs = await res.json();
+            const container = document.getElementById('history-container');
+            container.innerHTML = "<h3>📜 Lịch sử tiến bộ</h3>";
+
+            logs.forEach((log, index) => {
+                const currentVol = log.exercises[0].sets.reduce((a, b) => a + b, 0);
+                let comparison = "";
+
+                // So sánh với buổi tập cùng loại trước đó
+                const prevLog = logs.slice(index + 1).find(l => l.type === log.type);
+                if (prevLog) {
+                    const prevVol = prevLog.exercises[0].sets.reduce((a, b) => a + b, 0);
+                    const diff = currentVol - prevVol;
+                    comparison = diff >= 0 ? `<span class="vol-increase"> (↑ ${diff} reps)</span>` : `<span> (↓ ${Math.abs(diff)} reps)</span>`;
+                }
+
+                container.innerHTML += `
+                    <div class="log-card">
+                        <b>📅 ${new Date(log.date).toLocaleDateString()} - ${log.type}</b><br>
+                        💪 Volume: ${currentVol} reps ${comparison}<br>
+                        ⚖️ Cân nặng: ${log.weight || '--'} kg<br>
+                        🍭 Pump: ${log.exercises[0].pump}/5 | CNS: ${log.cnsFatigue}/5
+                    </div>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>
